@@ -1,12 +1,15 @@
 package com.deepak.photoapp.users.security;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 //After adding security starter, we need to create this class, as without this class, spring security will not work
@@ -15,15 +18,27 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 @Configuration //after annotating with @Configuration we do not need to create this class instance manually
 @EnableWebSecurity // this will enable Spring Security
 public class WebSecurity {
+	
+//	@Value("${gateway.ip}")
+//    private String gatewayIp;
+	
+	Environment environment;
+	
+	@Autowired
+	public WebSecurity(Environment environment) {
+		this.environment = environment;
+//		System.out.println("gatewayIp::"+gatewayIp);
+		System.out.println("gatewayIp::"+environment.getProperty("gateway.ip"));
+	}
 
 	@Bean  // as we do not want to create this instance manually, spring container will create it and will call it
-	protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+	protected SecurityFilterChain configure(HttpSecurity http) throws Exception {
 		// our api stateless and we will use JWT tokens, we will also disable Cross Site Request Forgery
 		http.csrf().disable();
 		
 		// this will permit all the POST requests that are made to /users endpoint, even if user is not authenticated
 		http.authorizeHttpRequests()
-        .requestMatchers(HttpMethod.POST, "/users").permitAll()
+        .requestMatchers(HttpMethod.POST, "/users").access(new WebExpressionAuthorizationManager("hasIpAddress('"+environment.getProperty("gateway.ip")+"')"))
         .requestMatchers(HttpMethod.GET, "/h2-console/**").permitAll() //to show the h2-console page
         .requestMatchers(new AntPathRequestMatcher("/h2-console/**")).permitAll()
         .and()
